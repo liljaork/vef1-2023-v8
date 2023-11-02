@@ -1,4 +1,5 @@
-import { createCartLine, showCartContent } from './lib/ui.js';
+import { createCartLine, showCartContent, checkIfTableLineEmpty, updateTotalTotal } from './lib/ui.js';
+import { formatNumber } from './lib/helpers.js';
 
 const products = [
   {
@@ -25,21 +26,64 @@ const products = [
 /** Bæta vöru í körfu */
 function addProductToCart(product, quantity) {
   // Hér þarf að finna `<tbody>` í töflu og setja `cartLine` inn í það
-  const cart = document.querySelector('.cart-content');
+  const cartMatrix = document.querySelectorAll('.table');
+  const cart = cartMatrix[1];
+  console.log(cart);
 
   if (!cart) {
     console.warn('fann ekki .cart');
     return;
   }
   
-  // TODO hér þarf að athuga hvort lína fyrir vöruna sé þegar til
-  const cartLine = createCartLine(product, quantity);
-  cart.appendChild(cartLine);
+  // Athugar hvort lína fyrir vöruna sé þegar til
+  function checkCartLineById(cart, productId){
+    const cartLines = cart.querySelectorAll('tr[data-cart-product-id]');
+    for(const cartLine of cartLines){
+      const lineProductId = parseInt(cartLine.getAttribute('data-cart-product-id'));
+    if (lineProductId === productId) {
+      return cartLine;
+    }
+    }
+    return null;
+  }
 
+  const existingCartline = checkCartLineById(cart, product.id)
+
+  if(existingCartline){
+    const quantityElement = existingCartline.querySelector('.quantity');
+    if(quantityElement){
+      const existingQuantity = parseInt(quantityElement.textContent);
+      console.log(existingQuantity)
+      quantityElement.textContent = (existingQuantity + quantity);
+      updateCartLineTotal(existingCartline);
+    }
+    
+  }
+  else{
+    const cartLine = createCartLine(product, quantity);
+    cart.appendChild(cartLine);
+  }
+
+  function updateCartLineTotal(cartLine){
+    const priceElement = cartLine.querySelector('.price span');
+    const quantityElement = cartLine.querySelector('.quantity');
+    const totalElement = cartLine.querySelector('.total span');
+
+    if (priceElement && quantityElement && totalElement) {
+      console.log(priceElement , quantityElement, totalElement)
+      const priceText = priceElement.textContent.trim();
+      const price = parseFloat(priceText.replace('ISK', '').replace(/[,\s.]/g, ''));
+      const quantity = parseInt(quantityElement.textContent);
+      console.log(price , quantity)
+      const newTotal = price * quantity;
+      totalElement.textContent = formatNumber(newTotal);
+    }
+  }
+  // Uppfæra samtals verð 
+  updateTotalTotal();
+  
   // Sýna efni körfu
   showCartContent(true);
-
-  // TODO sýna/uppfæra samtölu körfu
 }
 
 function submitHandler(event) {
@@ -47,7 +91,7 @@ function submitHandler(event) {
   event.preventDefault();
   
   // Finnum næsta element sem er `<tr>`
-  const parent = event.target.closest('tr')
+  const parent = event.target.closest('tr');
 
   // Það er með attribute sem tiltekur auðkenni vöru, t.d. `data-product-id="1"`
   const productId = Number.parseInt(parent.dataset.productId);
@@ -57,7 +101,9 @@ function submitHandler(event) {
 
   // TODO hér þarf að finna fjölda sem á að bæta við körfu með því að athuga
   // á input
-  const quantity = 1;
+  const quantityIntput = parent.querySelector('input[type="number"]');
+  const quantity = Number.parseInt(quantityIntput.value)
+  console.log(quantity)
 
   // Bætum vöru í körfu (hér væri gott að bæta við athugun á því að varan sé til)
   addProductToCart(product, quantity);
@@ -73,3 +119,16 @@ for (const form of Array.from(addToCartForms)) {
 }
 
 // TODO bæta við event handler á form sem submittar pöntun
+
+const formfylki = document.querySelectorAll('form');
+const form = formfylki[3];
+const gangaFraKaupumButton = form.querySelector('button')
+
+gangaFraKaupumButton.addEventListener('click', gangaFraKaupum)
+
+function gangaFraKaupum(event){
+  event.preventDefault();
+  const kvittun = document.querySelector('.receipt');
+  kvittun.classList.remove('hidden');
+
+}
